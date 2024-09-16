@@ -14,7 +14,7 @@ class DBController extends Controller
 {
     public function test()
     {
-
+        // $this->API_getUser('660144');
     }
     public function getQueryData($userid)
     {
@@ -72,6 +72,7 @@ class DBController extends Controller
         $user->position_EN = $response->result->EmployeeList[0]->EnglishPosition;
         $findDepartment = Department::where('department', $response->result->EmployeeList[0]->ThaiDepartment)->first();
         if ($findDepartment == null) {
+            dd('1');
             $findDepartment = new Department;
             $findDepartment->department = $response->result->EmployeeList[0]->ThaiDepartment;
             $findDepartment->department_EN = $response->result->EmployeeList[0]->EnglishDepartment;
@@ -90,9 +91,9 @@ class DBController extends Controller
                 $findDepartment->division_EN = $response->result->EmployeeList[0]->EnglishDivition;
                 $findDepartment->save();
             }
+            $findDepartment = Department::where('department', $response->result->EmployeeList[0]->ThaiDepartment)->first();
         }
-        $user->department = $findDepartment->department;
-        $user->department_id = $findDepartment->id;
+        $user->department = $findDepartment->id;
         $user->picture = $response->result->EmployeeList[0]->Picture;
 
         return $user;
