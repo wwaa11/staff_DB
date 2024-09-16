@@ -24,6 +24,7 @@ class DBController extends Controller
             ->leftjoin('consents', 'users.userid', '=', 'consents.userid')
             ->where('users.userid', $userid)
             ->select(
+                'users.userid',
                 'users.name',
                 'users.name_EN',
                 'users.position',
@@ -37,6 +38,7 @@ class DBController extends Controller
                 'consents.consent_sign',
             )
             ->first();
+
         return $user;
     }
     public function HRIS($user)
@@ -72,13 +74,14 @@ class DBController extends Controller
         $user->position_EN = $response->result->EmployeeList[0]->EnglishPosition;
         $findDepartment = Department::where('department', $response->result->EmployeeList[0]->ThaiDepartment)->first();
         if ($findDepartment == null) {
-            dd('1');
             $findDepartment = new Department;
             $findDepartment->department = $response->result->EmployeeList[0]->ThaiDepartment;
             $findDepartment->department_EN = $response->result->EmployeeList[0]->EnglishDepartment;
             $findDepartment->division = $response->result->EmployeeList[0]->ThaiDivision;
             $findDepartment->division_EN = $response->result->EmployeeList[0]->EnglishDivition;
             $findDepartment->save();
+
+            $findDepartment = Department::where('department', $response->result->EmployeeList[0]->ThaiDepartment)->first();
         } else {
             $now_time = date_create(date('Y-m-d H:i:s'));
             $pre_time = date_create($findDepartment->updated_at);
@@ -91,7 +94,6 @@ class DBController extends Controller
                 $findDepartment->division_EN = $response->result->EmployeeList[0]->EnglishDivition;
                 $findDepartment->save();
             }
-            $findDepartment = Department::where('department', $response->result->EmployeeList[0]->ThaiDepartment)->first();
         }
         $user->department = $findDepartment->id;
         $user->picture = $response->result->EmployeeList[0]->Picture;
@@ -109,7 +111,6 @@ class DBController extends Controller
         ]);
         if ($connection->auth()->attempt($request->userid . '@praram9hq.local', $request->password, $stayAuthenticated = true)) {
             $user = $this->getQueryData($request->userid);
-
             if ($user == null) {
                 $newuser = new User;
                 $newuser->userid = $request->userid;
@@ -124,22 +125,19 @@ class DBController extends Controller
                 $pre_time = date_create($user->updated_at);
                 $diff = $now_time->diff($pre_time);
                 $day = $diff->d + ($diff->m * 30);
-
                 if ($day > 14) {
                     $user = $this->HRIS($user);
-
                     $update = [
                         "name" => $user->name,
                         "name_EN" => $user->name_EN,
                         "position" => $user->position,
                         "position_EN" => $user->position_EN,
-                        "department" => $user->department_id,
+                        "department" => $user->department,
                         "picture" => $user->picture,
                         "updated_at" => date('Y-m-d H:i:s'),
                     ];
                     DB::table('users')->where('userid', $user->userid)->update($update);
                 }
-
                 $user = $this->getQueryData($request->userid);
 
                 return response()->json(['status' => 1, 'message' => 'Auth updated user success.', 'user' => $user], 200);
