@@ -2,26 +2,47 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Approver;
-use App\Models\Consent;
 use App\Models\Department;
-use App\Models\Email;
+use App\Models\Sign;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DBController extends Controller
 {
+    public function useCaseFN()
+    {
+        // Auth
+        $response = Http::withHeaders([
+            'token' => env('API_TOKEN'),
+        ])->post('http://172.20.1.12/dbstaff/api/auth', [
+            "userid" => $req->userid,
+            "password" => $req->password,
+        ]);
+        $response->json();
+    }
     public function test()
     {
-        // $this->API_getUser('660144');
+
+    }
+    // Function
+    public function authLDAP($userid, $password)
+    {
+        $connection = new \LdapRecord\Connection([
+            'hosts' => ['172.20.0.10'],
+        ]);
+        if ($connection->auth()->attempt($userid . '@praram9hq.local', $password, $stayAuthenticated = true)) {
+            return true;
+        }
+
+        return false;
     }
     public function getQueryData($userid)
     {
         $user = DB::table('users')
             ->leftjoin('departments', 'users.department', '=', 'departments.id')
             ->leftjoin('emails', 'users.userid', '=', 'emails.userid')
-            ->leftjoin('consents', 'users.userid', '=', 'consents.userid')
+            ->leftjoin('signs', 'users.userid', '=', 'signs.userid')
             ->where('users.userid', $userid)
             ->select(
                 'users.userid',
@@ -35,7 +56,6 @@ class DBController extends Controller
                 'departments.division_EN',
                 'departments.updated_at',
                 'emails.email',
-                'consents.consent_sign',
             )
             ->first();
 
@@ -43,6 +63,7 @@ class DBController extends Controller
     }
     public function HRIS($user)
     {
+        // User and Department
         $curl = curl_init();
         curl_setopt_array($curl, array(
             CURLOPT_URL => 'https://hris.praram9.com:8443/api/CustomEmployeeInfo',
@@ -100,16 +121,15 @@ class DBController extends Controller
 
         return $user;
     }
+    // API
     public function API_Auth(Request $request)
     {
         if ($request->header('token') !== env('API_TOKEN')) {
 
             return response()->json(['status' => 0, 'message' => 'token mismatch!'], 400);
         }
-        $connection = new \LdapRecord\Connection([
-            'hosts' => ['172.20.0.10'],
-        ]);
-        if ($connection->auth()->attempt($request->userid . '@praram9hq.local', $request->password, $stayAuthenticated = true)) {
+        $auth = $this->authLDAP($request->userid, $request->password);
+        if ($auth == true) {
             $user = $this->getQueryData($request->userid);
             if ($user == null) {
                 $newuser = new User;
@@ -142,10 +162,9 @@ class DBController extends Controller
 
                 return response()->json(['status' => 1, 'message' => 'Auth updated user success.', 'user' => $user], 200);
             }
-        } else {
-
-            return response()->json(['status' => 2, 'message' => 'Userid or Password not correct.'], 400);
         }
+
+        return response()->json(['status' => 2, 'message' => 'Userid or Password not correct.'], 400);
     }
     public function API_getUser(Request $request)
     {
@@ -153,8 +172,8 @@ class DBController extends Controller
 
             return response()->json(['status' => 0, 'message' => 'token mismatch!'], 400);
         }
-        $user = $this->getQueryData($request->userid);
 
+        $user = $this->getQueryData($request->userid);
         if ($user == null) {
             $newuser = new User;
             $newuser->userid = $request->userid;
@@ -170,88 +189,27 @@ class DBController extends Controller
         return response()->json(['status' => 1, 'message' => 'Get data success.', 'user' => $user], 200);
 
     }
-    public function Import_main()
+    public function API_AddWitness(Request $request)
     {
-        $DMSusers = DB::connection('DMS')->table('users')->get();
-        foreach ($DMSusers as $item) {
-            $findDepartment = Department::where('department', $item->department)->first();
-            if ($findDepartment == null) {
-                $findDepartment = new Department;
-                $findDepartment->department = $item->department;
-                $findDepartment->division = $item->division;
-                $findDepartment->save();
-            }
+        if ($request->header('token') !== env('API_TOKEN')) {
 
-            $findConsent = Consent::where('userid', $item->userid)->first();
-            if ($findConsent == null) {
-                $findConsent = new Consent;
-                $findConsent->userid = $item->userid;
-                $findConsent->consent_witness = $item->is_witness;
-                $findConsent->consent_sign = $item->sign;
-                $findConsent->save();
-            }
-
-            $findEmail = Email::where('userid', $item->userid)->first();
-            $EmailData = DB::connection('EMAIL')->table('divisions')->where('userid', $item->userid)->first();
-            if ($findEmail == null && $EmailData !== null) {
-                if ($EmailData->email !== 'TEXT_EDIT' && $EmailData->email !== null) {
-                    $findEmail = new Email;
-                    $findEmail->userid = $item->userid;
-                    $findEmail->email = $EmailData->email;
-                    $findEmail->save();
-                }
-            } else {
-                $EmailDataCRS = DB::connection('CRS')->table('departments')->where('userid', $item->userid)->first();
-                if ($findEmail == null && $EmailDataCRS !== null) {
-                    $findEmail = new Email;
-                    $findEmail->userid = $item->userid;
-                    $findEmail->email = $EmailDataCRS->email;
-                    $findEmail->save();
-                }
-            }
-
-            $findUser = User::where('userid', $item->userid)->first();
-            if ($findUser == null) {
-                $findUser = new User;
-                $findUser->userid = $item->userid;
-                $findUser->name = $item->name;
-                $findUser->position = $item->position;
-                $findUser->department = $findDepartment->id;
-                $findUser->save();
-            }
+            return response()->json(['status' => 0, 'message' => 'token mismatch!'], 400);
         }
-    }
-    public function Import_approve()
-    {
-        $getDivision = DB::connection('EMAIL')
-            ->table('divisions')
-            ->whereNotNull('userid')
-            ->whereNotNull('department')
-            ->orderBy('department', 'asc')
-            ->orderBy('level', 'asc')
-            ->get();
-        $tempDeptName = '';
-        $tempLevel = 1;
-        foreach ($getDivision as $item) {
-            if ($tempDeptName !== $item->department) {
-                $tempDeptName = $item->department;
-                $tempLevel = 1;
-            } else {
-                $tempLevel++;
+        $auth = $this->authLDAP($request->userid, $request->password);
+        if ($auth == true) {
+            $sign = Sign::where('userid', $request->userid)->first();
+            if ($sign == null) {
+                $sign = new Sign;
+                $sign->userid = $request->userid;
             }
-            $dept = Department::where('department', $item->department)->first();
-            if ($dept !== null) {
-                $findNew = Approver::where('department_id', $dept->id)->where('userid', $item->userid)->first();
-                if ($findNew == null) {
-                    $new = new Approver;
-                    $new->department_id = $dept->id;
-                    $new->userid = $item->userid;
-                    $new->name = $item->username;
-                    $new->email = $item->email;
-                    $new->level = $tempLevel;
-                    $new->save();
-                }
-            }
+            $sign->sign = $request->sign;
+            $sign->sign_time = date('Y-m-d H:i:s');
+            $sign->consent_witness = 1;
+            $sign->save();
+
+            return response()->json(['status' => 1, 'message' => 'Add Witness Success.'], 200);
         }
+
+        return response()->json(['status' => 2, 'message' => 'Userid or Password not correct.'], 400);
     }
 }

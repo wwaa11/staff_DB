@@ -11,12 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('consents', function (Blueprint $table) {
+        Schema::create('signs', function (Blueprint $table) {
             $table->id();
-            $table->string('userid')->unique();
-            $table->text('consent_sign')->nullable();
-            $table->integer('consent_witness')->default(0);
             $table->timestamps();
+            $table->string('userid')->unique();
+            $table->text('sign');
+            $table->dateTime('sign_time');
+            $table->integer('consent_witness')->default(0);
         });
     }
 
@@ -25,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('consents');
+        Schema::dropIfExists('signs');
     }
 };
