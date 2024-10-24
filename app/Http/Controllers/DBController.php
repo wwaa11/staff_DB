@@ -13,13 +13,13 @@ class DBController extends Controller
     public function useCaseFN()
     {
         // Auth
-        $response = Http::withHeaders([
-            'token' => env('API_TOKEN'),
-        ])->post('http://172.20.1.12/dbstaff/api/auth', [
-            "userid" => $req->userid,
-            "password" => $req->password,
-        ]);
-        $response->json();
+        // $response = Http::withHeaders([
+        //     'token' => env('API_TOKEN'),
+        // ])->post('http://172.20.1.12/dbstaff/api/auth', [
+        //     "userid" => $req->userid,
+        //     "password" => $req->password,
+        // ]);
+        // $response->json();
     }
     public function test()
     {
@@ -54,7 +54,7 @@ class DBController extends Controller
                 'departments.department_EN',
                 'departments.division',
                 'departments.division_EN',
-                'departments.updated_at',
+                'users.updated_at',
                 'emails.email',
             )
             ->first();
@@ -135,6 +135,10 @@ class DBController extends Controller
                 $newuser = new User;
                 $newuser->userid = $request->userid;
                 $newuser = $this->HRIS($newuser);
+                if (!$newuser) {
+                        
+                    return response()->json(['status' => 1, 'message' => 'UserID not found.'], 200);
+                }
                 $newuser->save();
 
                 $user = $this->getQueryData($request->userid);
@@ -147,6 +151,10 @@ class DBController extends Controller
                 $day = $diff->d + ($diff->m * 30);
                 if ($day > 14) {
                     $user = $this->HRIS($user);
+                    if (!$user) {
+
+                        return response()->json(['status' => 1, 'message' => 'UserID not found.'], 200);
+                    }
                     $update = [
                         "name" => $user->name,
                         "name_EN" => $user->name_EN,
@@ -157,10 +165,12 @@ class DBController extends Controller
                         "updated_at" => date('Y-m-d H:i:s'),
                     ];
                     DB::table('users')->where('userid', $user->userid)->update($update);
-                }
-                $user = $this->getQueryData($request->userid);
+                    $user = $this->getQueryData($request->userid);
 
-                return response()->json(['status' => 1, 'message' => 'Auth updated user success.', 'user' => $user], 200);
+                    return response()->json(['status' => 1, 'message' => 'Auth & Updated Success.', 'user' => $user], 200);
+                }
+
+                return response()->json(['status' => 1, 'message' => 'Auth Success.', 'user' => $user], 200);
             }
         }
 
