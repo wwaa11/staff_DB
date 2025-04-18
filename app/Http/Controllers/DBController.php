@@ -84,17 +84,34 @@ class DBController extends Controller
                 )
                 ->first();
 
+            $info = DB::connection('SSB')
+                ->table('HNPAT_INFO')
+                ->where('HN', $findHN->HN)
+                ->select(
+                    'Gender'
+                )
+                ->first();
+
+            if ($info !== null) {
+                $gender = ($Info->Gender == 1) ? 'หญิง' : 'ชาย';
+            } else {
+                $gender = null;
+            }
+            $passport = ($findRef->IDCardType == 1) ? false : true;
+
             $newRef           = new Referance;
             $newRef->userid   = $userid;
             $newRef->HN       = $findHN->HN;
             $newRef->refID    = $findRef->RefNo;
-            $newRef->passport = ($findRef->IDCardType == 1) ? false : true;
+            $newRef->passport = $passport;
+            $newRef->gender   = $gender;
             $newRef->save();
 
             $response = [
                 'hn'       => $findHN->HN,
+                'gender'   => $gender,
                 'refid'    => $findRef->RefNo,
-                'passport' => ($findRef->IDCardType == 1) ? false : true,
+                'passport' => $passport,
             ];
         }
 
@@ -120,6 +137,7 @@ class DBController extends Controller
                 'departments.division_EN',
                 'emails.email',
                 'referances.HN',
+                'referances.gender',
                 'referances.passport',
                 'referances.refID',
                 'users.updated_at',
@@ -180,6 +198,7 @@ class DBController extends Controller
                         'departments.division_EN',
                         'emails.email',
                         'referances.HN',
+                        'referances.gender',
                         'referances.passport',
                         'referances.refID',
                         'users.updated_at',
