@@ -93,7 +93,7 @@ class DBController extends Controller
                 ->first();
 
             if ($info !== null) {
-                $gender = ($Info->Gender == 1) ? 'หญิง' : 'ชาย';
+                $gender = ($info->Gender == 1) ? 'หญิง' : 'ชาย';
             } else {
                 $gender = null;
             }
