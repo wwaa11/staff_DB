@@ -6,7 +6,10 @@ use App\Models\Email;
 use App\Models\Referance;
 use App\Models\Sign;
 use App\Models\User;
+use Carbon\Carbon;
+use DateTime;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use LdapRecord\Connection;
 
@@ -27,7 +30,7 @@ class DBController extends Controller
     {
 
     }
-    // Quert Fn
+    // Query Fn
     public function getClinic($clinic_code)
     {
         $config = DB::connection('SSB')->table("DNSYSCONFIG")->where('CtrlCode', '42203')->where('Code', $clinic_code)->first();
@@ -38,6 +41,97 @@ class DBController extends Controller
         }
 
         return $text;
+    }
+    public function setfullDate($dateInput, $lang)
+    {
+        $nowDate  = new DateTime();
+        $getDate  = new DateTime($dateInput);
+        $diffDate = $nowDate->diff($getDate);
+
+        $dateTime = strtotime($dateInput);
+        if ($lang == 'th') {
+            App::setLocale('th');
+            $dayOfWeek  = Carbon::createFromTimestamp($dateTime)->translatedFormat('l');
+            $monthNames = Carbon::createFromTimestamp($dateTime)->translatedFormat('M');
+
+            $response = (object) [
+                "YMD"      => date('Y-m-d', $dateTime),
+                "H"        => date('H', $dateTime),
+                "I"        => date('i', $dateTime),
+                "dob"      => date('Y-m-d', $dateTime),
+                "Day"      => $dayOfWeek,
+                "Month"    => $monthNames,
+                "Date"     => date('j', $dateTime),
+                "Year"     => date('Y', $dateTime),
+                "FullDate" => date('j', $dateTime) . ' ' . $monthNames . ' ' . date('Y', $dateTime) + 543,
+                "Age"      => $diffDate->y,
+            ];
+        } else {
+            $response = (object) [
+                "YMD"      => date('Y-m-d', $dateTime),
+                "H"        => date('H', $dateTime),
+                "I"        => date('i', $dateTime),
+                "dob"      => date('Y-m-d', $dateTime),
+                "Day"      => date('D', $dateTime),
+                "Month"    => date('M', $dateTime),
+                "Date"     => date('j', $dateTime),
+                "Year"     => date('Y', $dateTime),
+                "FullDate" => date('j', $dateTime) . ' ' . date('M', $dateTime) . ' ' . date('Y', $dateTime),
+                "Age"      => $diffDate->y,
+            ];
+        }
+
+        return $response;
+    }
+    public function address($code, $lang)
+    {
+        if ($code == null || $code == '' || ! explode('.', $code)) {
+            return (object) [
+                'Province'         => null,
+                'Province_Code'    => null,
+                'District'         => null,
+                'District_Code'    => null,
+                'Subdistrict'      => null,
+                'Subdistrict_Code' => null,
+            ];
+        } else {
+            $code = explode('.', $code);
+            if (array_key_exists(0, $code) && array_key_exists(1, $code) && array_key_exists(2, $code)) {
+                return (object) [
+                    'Province'         => $this->DNSCONFIG('10691', $code[0], $lang),
+                    'Province_Code'    => $code[0],
+                    'District'         => $this->DNSCONFIG('10691', $code[0] . '.' . $code[1], $lang),
+                    'District_Code'    => $code[1],
+                    'Subdistrict'      => $this->DNSCONFIG('10691', $code[0] . '.' . $code[1] . '.' . $code[2], $lang),
+                    'Subdistrict_Code' => $code[2],
+                ];
+            } else {
+                return (object) [
+                    'Province'         => null,
+                    'Province_Code'    => null,
+                    'District'         => null,
+                    'District_Code'    => null,
+                    'Subdistrict'      => null,
+                    'Subdistrict_Code' => null,
+                ];
+            }
+
+        }
+    }
+    public function DNSCONFIG($ctrl, $code, $lang)
+    {
+        mb_internal_encoding('UTF-8');
+        $names = DB::connection('SSB')->table('DNSYSCONFIG')->where('CtrlCode', $ctrl)->where('Code', $code)->first();
+        if ($names == null) {
+            return "Not Found";
+        }
+        if ($lang == 'th') {
+            ($names->LocalName !== null) ? $name = mb_substr($names->LocalName, 1) : $name = mb_substr($names->EnglishName, 1);
+        } else {
+            $name = mb_substr($names->EnglishName, 1);
+        }
+
+        return $name;
     }
     // Function
     public function authLDAP($userid, $password)
@@ -144,7 +238,12 @@ class DBController extends Controller
             )
             ->first();
 
-        if ($user !== null) {
+        $skipUser = [
+            '226802',
+            '226805',
+        ];
+
+        if ($user !== null && ! in_array($user, $skipUser)) {
 
             if ($user->refID == null) {
                 $ref = $this->createReferance($user->userid);
@@ -166,7 +265,6 @@ class DBController extends Controller
                     Referance::where('userid', $user->userid)->delete();
                     Email::where('userid', $user->userid)->delete();
                     Sign::where('userid', $user->userid)->delete();
-
                 } else {
                     $update = [
                         "name"        => $user->name,
@@ -294,6 +392,7 @@ class DBController extends Controller
 
         return $user;
     }
+
     // API
     public function API_Auth(Request $request)
     {
@@ -367,5 +466,160 @@ class DBController extends Controller
         }
 
         return response()->json(['status' => 2, 'message' => 'Userid or Password not correct.'], 400);
+    }
+    public function API_PatientInfo(Request $request)
+    {
+        if ($request->header('token') !== env('API_TOKEN')) {
+
+            return response()->json(['status' => 0, 'message' => 'token mismatch!'], 400);
+        }
+        $hn       = $request->hn;
+        $response = [
+            'status'  => 0,
+            'messgae' => 'not implement!',
+        ];
+        // $patient = DB::connection('SSB')
+        //     ->table('HNPAT_INFO')
+        // ->leftjoin('HNPAT_NAME', 'HNPAT_INFO.HN', '=', 'HNPAT_NAME.HN')
+        // ->leftjoin('HNPAT_REF', 'HNPAT_INFO.HN', '=', 'HNPAT_REF.HN')
+        //     ->leftjoin('HNPAT_ADDRESS', 'HNPAT_INFO.HN', '=', 'HNPAT_ADDRESS.HN')
+        //     ->whereNull('HNPAT_INFO.FileDeletedDate')
+        //     ->where('HNPAT_ADDRESS.SuffixTiny', 1)
+        //     ->where('HNPAT_NAME.SuffixSmall', 0)
+        //     ->where('HNPAT_INFO.HN', $hn)
+        //     ->select(
+        //         'HNPAT_INFO.HN',
+        //         'HNPAT_INFO.Gender',
+        //     )
+        //     ->first();
+        // if ($patient !== null) {
+        //     $response = [
+        //         'status'  => 1,
+        //         'messgae' => 'success',
+        //         'patient' => $patient,
+        //     ];
+        // }
+
+        return response()->json($response, 200);
+    }
+    public function API_PatientConsent(Request $request)
+    {
+        if ($request->header('token') !== env('API_TOKEN')) {
+
+            return response()->json(['status' => 0, 'message' => 'token mismatch!'], 400);
+        }
+        $hn       = $request->hn;
+        $lang     = $request->lang;
+        $response = [
+            'status'  => 0,
+            'messgae' => 'failed',
+        ];
+
+        $consent = DB::connection('SIGNFORM')
+            ->table('Concent_TH')
+            ->where('HN', $hn)
+            ->orderby('CompleteDateTime', 'DESC')
+            ->first();
+
+        $patientInfo = DB::connection('SSB')
+            ->table("HNPAT_INFO")
+            ->where('HN', $hn)
+            ->whereNull('FileDeletedDate')
+            ->select(
+                'BirthDateTime',
+                'ReligionCode',
+                'NationalityCode',
+                'MaritalStatus',
+                'Occupation',
+                'EducationLevelCode',
+                'RaceCode'
+            )
+            ->first();
+
+        $getMartial                                                         = DB::connection('SIGNFORM')->table('Social')->where('Code', $patientInfo->MaritalStatus)->first();
+        ($getMartial == null) ? $getMartial                                 = (object) ['Desc' => null, 'Nameen' => null] : null;
+        $getOcupation                                                       = DB::connection('SIGNFORM')->table('Occupation')->where('Code', $patientInfo->Occupation)->first();
+        ($getOcupation == null) ? $getOcupation                             = (object) ['LocalName' => null, 'Nameen' => null] : null;
+        $getRelationRepresenttative                                         = DB::connection('SIGNFORM')->table('Relative')->where('Code', $consent->Representative_Relation)->first();
+        ($getRelationRepresenttative == null) ? $getRelationRepresenttative = (object) ['Name' => null, 'Nameen' => null] : null;
+
+        $dobTime  = $this->setfullDate($patientInfo->BirthDateTime, $lang);
+        $dataTime = $this->setfullDate($consent->CreateDateTime, $lang);
+
+        switch ($patientInfo->EducationLevelCode) {
+            case '004':
+                $getEducation = 1;
+                break;
+            case '005':
+                $getEducation = 2;
+                break;
+            case '006':
+                $getEducation = 3;
+                break;
+            case '007':
+                $getEducation = 3;
+                break;
+            default:
+                $getEducation = 0;
+                break;
+        }
+
+        $address_data                            = $this->address($consent->Province . '.' . $consent->District . '.' . $consent->SubDistrict, $lang);
+        $address_full                            = $consent->Address;
+        ($consent->Moo !== null) ? $address_full = $address_full . ' หมู่' . $consent->Moo : null;
+
+        if ($lang == 'th') {
+            $address_full = $address_full . ' เขต' . $address_data->District . ' แขวง' . $address_data->Subdistrict . ' จังหวัด ' . $address_data->Province;
+        }
+
+        if ($consent->Address1 !== null) {
+            $contact_data                             = $this->address($consent->Province1 . '.' . $consent->District1 . '.' . $consent->SubDistrict1, $lang);
+            $contact_full                             = $consent->Address1;
+            ($consent->Moo1 !== null) ? $contact_full = $contact_full . ' หมู่' . $consent->Moo1 : null;
+            $contact_full                             = $contact_full . ' เขต' . $contact_data->District . ' แขวง' . $contact_data->Subdistrict . ' จังหวัด ' . $contact_data->Province;
+        }
+
+        $consent = [
+            'hn'                    => $consent->HN,
+            'nameTH'                => $consent->Name_TH,
+            'surnameTH'             => $consent->Surname_TH,
+            'nameEN'                => strtoupper($consent->Name_EN),
+            'surnameEN'             => strtoupper($consent->Surname_EN),
+            'DOB'                   => $dobTime->FullDate,
+            'age'                   => $dobTime->Age,
+            'religion'              => $this->DNSCONFIG('10109', $patientInfo->ReligionCode, $lang),
+            'race'                  => $this->DNSCONFIG('10119', $patientInfo->RaceCode, $lang),
+            'national'              => $this->DNSCONFIG('10119', $patientInfo->NationalityCode, $lang),
+            'martial'               => ($lang == 'th') ? $getMartial->Desc : $getMartial->Nameen,
+            'ocupation'             => ($lang == 'th') ? $getOcupation->LocalName : $getOcupation->Nameen,
+            'education'             => $getEducation,
+            'phone'                 => $consent->HomeTel,
+            'mobile'                => $consent->Mobile,
+            'email'                 => $consent->Email,
+            'address'               => $address_full,
+            'address_contact'       => ($consent->Address1 !== null) ? $contact_full : null,
+            'allergy'               => ($consent->Allergy == '0') ? false : true,
+            'allergy_name'          => $consent->FoodAllergy,
+            'allergy_symptom'       => $consent->SymptomAllergy,
+            'photo'                 => ($consent->PhotoAllow == '0') ? true : false,
+            'represent'             => ($consent->Representative == '1') ? true : false,
+            'represent_name'        => $consent->Representative_Name,
+            'represent_relation'    => ($lang == 'th') ? $getRelationRepresenttative->Name : $getRelationRepresenttative->Nameen,
+            'represent_phone'       => $consent->Representative_Tel,
+            'consent_1'             => true,
+            'consent_3'             => ($consent->PDPA3 == 'ยินยอมประกัน') ? true : false,
+            'consent_4'             => ($consent->PDPA4 == 1 || $consent->PDPA4 == 3) ? true : false,
+            'patien_name'           => $consent->Name_TH . ' ' . $consent->Surname_TH,
+            'patien_card_type'      => ($consent->PDPA5 == 'ผู้ป่วย') ? 1 : 2,
+            'patien_card_type_name' => ($consent->PDPA5 == 'ผู้ป่วย') ? null : $consent->Remark,
+        ];
+
+        $response = [
+            'status'  => 1,
+            'messgae' => 'success',
+            'patient' => $consent,
+        ];
+
+        return response()->json($response, 200);
     }
 }

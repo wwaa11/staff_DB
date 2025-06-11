@@ -17,3 +17,6 @@ use Illuminate\Support\Facades\Route;
 Route::post('/getuser', [DBController::class, 'API_getUser']);
 Route::post('/auth', [DBController::class, 'API_Auth']);
 Route::post('/auth/addwitness', [DBController::class, 'API_AddWitness']);
+
+Route::post('/patient/info', [DBController::class, 'API_PatientInfo']);
+Route::post('/patient/consent', [DBController::class, 'API_PatientConsent']);
