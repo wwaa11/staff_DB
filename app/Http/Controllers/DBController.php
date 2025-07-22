@@ -28,7 +28,6 @@ class DBController extends Controller
     }
     public function test()
     {
-
     }
     // Query Fn
     public function getClinic($clinic_code)
@@ -256,8 +255,7 @@ class DBController extends Controller
             $now_time = date_create(date('Y-m-d H:i:s'));
             $pre_time = date_create($user->updated_at);
             $diff     = $now_time->diff($pre_time);
-            $day      = $diff->d + ($diff->m * 30);
-
+            $day      = $diff->d + ($diff->m * 30) + ($diff->y * 365);
             if ($day > 14) {
                 $updateName = $this->HRIS($user);
                 if (! $updateName) {
@@ -377,6 +375,7 @@ class DBController extends Controller
         $user->position    = $response->result->EmployeeList[0]->ThaiPosition;
         $user->position_EN = $response->result->EmployeeList[0]->EnglishPosition;
         $findDepartment    = Department::where('department', $response->result->EmployeeList[0]->ThaiDepartment)->first();
+
         if ($findDepartment == null) {
             $findDepartment                = new Department;
             $findDepartment->department    = $response->result->EmployeeList[0]->ThaiDepartment;
@@ -387,6 +386,19 @@ class DBController extends Controller
 
             $findDepartment = Department::where('department', $response->result->EmployeeList[0]->ThaiDepartment)->first();
         }
+
+        $now_time = date_create(date('Y-m-d H:i:s'));
+        $pre_time = date_create($findDepartment->updated_at);
+        $diff     = $now_time->diff($pre_time);
+        $day      = $diff->d + ($diff->m * 30) + ($diff->y * 365);
+        if ($day > 14) {
+            $findDepartment->department    = $response->result->EmployeeList[0]->ThaiDepartment;
+            $findDepartment->department_EN = $response->result->EmployeeList[0]->EnglishDepartment;
+            $findDepartment->division      = $response->result->EmployeeList[0]->ThaiDivision;
+            $findDepartment->division_EN   = $response->result->EmployeeList[0]->EnglishDivition;
+            $findDepartment->save();
+        }
+
         $user->department = $findDepartment->id;
         $user->picture    = $response->result->EmployeeList[0]->Picture;
 
@@ -444,6 +456,31 @@ class DBController extends Controller
         return response()->json(['status' => 1, 'message' => 'Get data success.', 'user' => $user], 200);
 
     }
+    public function API_getApprover(Request $request)
+    {
+        if ($request->header('token') !== env('API_TOKEN')) {
+            return response()->json(['status' => 0, 'message' => 'token mismatch!'], 400);
+        }
+
+        $user = User::with(['approver.userData', 'approver.email'])->where('userid', $request->userid)->first()->toArray();
+        if ($user == null) {
+
+            return response()->json(['status' => 2, 'message' => 'UserID not found.'], 400);
+        }
+
+        $approverData = $user['approver'];
+        $approver     = [
+            'userid'      => $approverData[0]['user_data']['userid'] ?? null,
+            'name'        => $approverData[0]['user_data']['name'] ?? null,
+            'name_EN'     => $approverData[0]['user_data']['name_EN'] ?? null,
+            'position'    => $approverData[0]['user_data']['position'] ?? null,
+            'position_EN' => $approverData[0]['user_data']['position_EN'] ?? null,
+            'email'       => $approverData[0]['email']['email'] ?? null,
+        ];
+
+        return response()->json(['status' => 1, 'message' => 'Get approver success.', 'approver' => $approver], 200);
+
+    }
     public function API_AddWitness(Request $request)
     {
         if ($request->header('token') !== env('API_TOKEN')) {
@@ -467,43 +504,9 @@ class DBController extends Controller
 
         return response()->json(['status' => 2, 'message' => 'Userid or Password not correct.'], 400);
     }
-    public function API_PatientInfo(Request $request)
-    {
-        if ($request->header('token') !== env('API_TOKEN')) {
-
-            return response()->json(['status' => 0, 'message' => 'token mismatch!'], 400);
-        }
-        $hn       = $request->hn;
-        $response = [
-            'status'  => 0,
-            'messgae' => 'not implement!',
-        ];
-        // $patient = DB::connection('SSB')
-        //     ->table('HNPAT_INFO')
-        // ->leftjoin('HNPAT_NAME', 'HNPAT_INFO.HN', '=', 'HNPAT_NAME.HN')
-        // ->leftjoin('HNPAT_REF', 'HNPAT_INFO.HN', '=', 'HNPAT_REF.HN')
-        //     ->leftjoin('HNPAT_ADDRESS', 'HNPAT_INFO.HN', '=', 'HNPAT_ADDRESS.HN')
-        //     ->whereNull('HNPAT_INFO.FileDeletedDate')
-        //     ->where('HNPAT_ADDRESS.SuffixTiny', 1)
-        //     ->where('HNPAT_NAME.SuffixSmall', 0)
-        //     ->where('HNPAT_INFO.HN', $hn)
-        //     ->select(
-        //         'HNPAT_INFO.HN',
-        //         'HNPAT_INFO.Gender',
-        //     )
-        //     ->first();
-        // if ($patient !== null) {
-        //     $response = [
-        //         'status'  => 1,
-        //         'messgae' => 'success',
-        //         'patient' => $patient,
-        //     ];
-        // }
-
-        return response()->json($response, 200);
-    }
     public function API_PatientConsent(Request $request)
     {
+        // Drop
         if ($request->header('token') !== env('API_TOKEN')) {
 
             return response()->json(['status' => 0, 'message' => 'token mismatch!'], 400);
@@ -535,6 +538,10 @@ class DBController extends Controller
                 'RaceCode'
             )
             ->first();
+
+        if ($consent == null || $patientInfo == null) {
+            return response()->json(['status' => 0, 'message' => 'consent not found'], 400);
+        }
 
         $getMartial                                                         = DB::connection('SIGNFORM')->table('Social')->where('Code', $patientInfo->MaritalStatus)->first();
         ($getMartial == null) ? $getMartial                                 = (object) ['Desc' => null, 'Nameen' => null] : null;
