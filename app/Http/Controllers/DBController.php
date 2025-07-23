@@ -481,6 +481,42 @@ class DBController extends Controller
         return response()->json(['status' => 1, 'message' => 'Get approver success.', 'approver' => $approver], 200);
 
     }
+    public function API_getApprover_Department(Request $request)
+    {
+        if ($request->header('token') !== env('API_TOKEN')) {
+            return response()->json(['status' => 0, 'message' => 'token mismatch!'], 400);
+        }
+
+        $department = Department::join('approvers', 'departments.id', '=', 'approvers.department_id')
+            ->join('users', 'approvers.userid', '=', 'users.userid')
+            ->join('emails', 'users.userid', '=', 'emails.userid')
+            ->where('departments.department', $request->department)
+            ->select(
+                'users.userid',
+                'users.name',
+                'users.name_EN',
+                'users.position',
+                'users.position_EN',
+                'emails.email'
+            )
+            ->first();
+        if ($department == null) {
+
+            return response()->json(['status' => 2, 'message' => 'Approver Department not found.'], 400);
+        }
+
+        $approverData = $department;
+        $approver     = [
+            'userid'      => $approverData['userid'] ?? null,
+            'name'        => $approverData['name'] ?? null,
+            'name_EN'     => $approverData['name_EN'] ?? null,
+            'position'    => $approverData['position'] ?? null,
+            'position_EN' => $approverData['position_EN'] ?? null,
+            'email'       => $approverData['email'] ?? null,
+        ];
+
+        return response()->json(['status' => 1, 'message' => 'Get approver for departments success.', 'approver' => $approver], 200);
+    }
     public function API_AddWitness(Request $request)
     {
         if ($request->header('token') !== env('API_TOKEN')) {
