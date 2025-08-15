@@ -28,6 +28,7 @@ class DBController extends Controller
     }
     public function test()
     {
+
     }
     // Query Fn
     public function getClinic($clinic_code)
