@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\Approver;
 use App\Models\Department;
 use App\Models\Email;
 use App\Models\Referance;
@@ -463,20 +464,21 @@ class DBController extends Controller
             return response()->json(['status' => 0, 'message' => 'token mismatch!'], 400);
         }
 
-        $user = User::with(['approver.userData', 'approver.email'])->where('userid', $request->userid)->first()->toArray();
+        $user = User::where('userid', $request->userid)->first();
         if ($user == null) {
 
             return response()->json(['status' => 2, 'message' => 'UserID not found.'], 400);
         }
+        $approver = Approver::with(['userData', 'email'])->where('department_id', $user->department)->get()->toArray();
 
-        $approverData = $user['approver'];
+        $approverData = $approver[0] ?? [];
         $approver     = [
-            'userid'      => $approverData[0]['user_data']['userid'] ?? null,
-            'name'        => $approverData[0]['user_data']['name'] ?? null,
-            'name_EN'     => $approverData[0]['user_data']['name_EN'] ?? null,
-            'position'    => $approverData[0]['user_data']['position'] ?? null,
-            'position_EN' => $approverData[0]['user_data']['position_EN'] ?? null,
-            'email'       => $approverData[0]['email']['email'] ?? null,
+            'userid'      => $approverData['user_data']['userid'] ?? null,
+            'name'        => $approverData['user_data']['name'] ?? null,
+            'name_EN'     => $approverData['user_data']['name_EN'] ?? null,
+            'position'    => $approverData['user_data']['position'] ?? null,
+            'position_EN' => $approverData['user_data']['position_EN'] ?? null,
+            'email'       => $approverData['email']['email'] ?? null,
         ];
 
         return response()->json(['status' => 1, 'message' => 'Get approver success.', 'approver' => $approver], 200);
