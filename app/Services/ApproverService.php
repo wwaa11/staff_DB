@@ -143,6 +143,57 @@ class ApproverService
         return $approver;
     }
 
+    public function incompleteDepartmentApprovers()
+    {
+        return Approver::query()
+            ->leftJoin('departments', 'approvers.department_id', '=', 'departments.id')
+            ->leftJoin('users', 'approvers.userid', '=', 'users.userid')
+            ->where(function ($query) {
+                $query->whereNull('departments.id')
+                    ->orWhereNull('departments.department')
+                    ->orWhere('departments.department', '')
+                    ->orWhereNull('departments.division')
+                    ->orWhere('departments.division', '');
+            })
+            ->select(
+                'approvers.id',
+                'approvers.userid',
+                'approvers.level',
+                'approvers.department_id',
+                'approvers.updated_at',
+                'users.name',
+                'users.position',
+                'departments.department',
+                'departments.division'
+            )
+            ->orderBy('approvers.id')
+            ->get();
+    }
+
+    public function deleteIncompleteDepartmentApprovers(?array $ids = null): int
+    {
+        $query = Approver::query()
+            ->leftJoin('departments', 'approvers.department_id', '=', 'departments.id')
+            ->where(function ($builder) {
+                $builder->whereNull('departments.id')
+                    ->orWhereNull('departments.department')
+                    ->orWhere('departments.department', '')
+                    ->orWhereNull('departments.division')
+                    ->orWhere('departments.division', '');
+            });
+
+        if ($ids !== null) {
+            $query->whereIn('approvers.id', $ids);
+        }
+
+        $idsToDelete = $query->pluck('approvers.id');
+        if ($idsToDelete->isEmpty()) {
+            return 0;
+        }
+
+        return Approver::whereIn('id', $idsToDelete)->delete();
+    }
+
     private function payloadsByDepartmentId(int $departmentId): array
     {
         return $this->payloadsByDepartmentIds([$departmentId]);

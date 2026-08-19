@@ -2,7 +2,7 @@
 
 @section('title', 'ล้างข้อมูล')
 @section('heading', 'ล้างข้อมูล')
-@section('subtitle', 'ลบอีเมลที่ไม่มีพนักงาน และแผนก/ฝ่ายที่ไม่มีคนใช้งาน')
+@section('subtitle', 'ลบอีเมลที่ไม่มีพนักงาน แผนก/ฝ่ายว่าง และผู้อนุมัติที่ไม่มีแผนกหรือฝ่าย')
 
 @section('content')
     <div class="panel">
@@ -116,6 +116,70 @@
             </table>
         </div>
     </div>
+
+    <div class="panel">
+        <div class="panel-toolbar">
+            <div class="flex items-center gap-2">
+                <h2 class="panel-title">ผู้อนุมัติที่ไม่มีแผนก / ฝ่าย</h2>
+                <span class="badge {{ $incompleteApprovers->count() > 0 ? 'badge-error' : 'badge-neutral' }}">{{ $incompleteApprovers->count() }}</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                @include('partials.search_input', [
+                    'id' => 'approver-filter',
+                    'placeholder' => 'ค้นหาในตาราง',
+                    'wrapperClass' => 'w-full max-w-xs',
+                    'attrs' => 'aria-label="ค้นหาผู้อนุมัติที่ไม่มีแผนกหรือฝ่าย"',
+                ])
+                @if ($incompleteApprovers->count() > 0)
+                    <form method="POST" action="{{ url('/data-cleanup/approvers/delete-all') }}"
+                        data-confirm="ลบผู้อนุมัติที่ไม่มีแผนกหรือฝ่ายทั้งหมด {{ $incompleteApprovers->count() }} รายการ?">
+                        @csrf
+                        <button type="submit" class="btn btn-error btn-outline btn-sm">ลบทั้งหมด</button>
+                    </form>
+                @endif
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="data-table" id="approver-table">
+                <thead>
+                    <tr>
+                        <th>ผู้อนุมัติ</th>
+                        <th>ระดับ</th>
+                        <th>แผนก</th>
+                        <th>ฝ่าย</th>
+                        <th>อัปเดต</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($incompleteApprovers as $row)
+                        <tr>
+                            <td>
+                                <div class="font-semibold text-base-content">{{ $row->name ?: '-' }}</div>
+                                <div class="mt-0.5 text-xs text-base-content/50">{{ $row->userid }} ·
+                                    {{ $row->position ?: '-' }}</div>
+                            </td>
+                            <td>{{ $row->level }}</td>
+                            <td>{{ $row->department ?: '-' }}</td>
+                            <td>{{ $row->division ?: '-' }}</td>
+                            <td class="whitespace-nowrap text-base-content/50">{{ $row->updated_at }}</td>
+                            <td>
+                                <form method="POST" action="{{ url('/data-cleanup/approvers/'.$row->id.'/delete') }}"
+                                    data-confirm="ลบผู้อนุมัติ {{ $row->name ?: $row->userid }} ?">
+                                    @csrf
+                                    <button type="submit" class="btn btn-error btn-outline btn-sm">ลบ</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="empty-state">ไม่มีผู้อนุมัติที่ไม่มีแผนกหรือฝ่าย</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -134,5 +198,6 @@
         }
         bindTableFilter('orphan-filter', 'orphan-table');
         bindTableFilter('unused-filter', 'unused-table');
+        bindTableFilter('approver-filter', 'approver-table');
     </script>
 @endpush

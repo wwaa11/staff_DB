@@ -49,6 +49,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/data-cleanup/emails/{id}/delete', [DataCleanupController::class, 'destroyOrphan']);
     Route::post('/data-cleanup/departments/delete-all', [DataCleanupController::class, 'destroyAllUnused']);
     Route::post('/data-cleanup/departments/{id}/delete', [DataCleanupController::class, 'destroyUnused']);
+    Route::post('/data-cleanup/approvers/delete-all', [DataCleanupController::class, 'destroyIncompleteApprovers']);
+    Route::post('/data-cleanup/approvers/{id}/delete', [DataCleanupController::class, 'destroyIncompleteApprover']);
 
     Route::get('/user-manual', [ManualUserController::class, 'index']);
     Route::get('/user-manual/search', [ManualUserController::class, 'search']);
