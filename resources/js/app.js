@@ -19,37 +19,46 @@ function themeColor(name) {
 
 window.AppAlert = {
     defaults() {
+        const openDialog = document.querySelector('dialog[open]');
         return {
+            target: openDialog || document.body,
             confirmButtonColor: themeColor('primary'),
             cancelButtonColor: themeColor('neutral'),
             confirmButtonText: 'ตกลง',
             cancelButtonText: 'ยกเลิก',
         };
     },
+    show(options) {
+        return new Promise((resolve) => {
+            requestAnimationFrame(() => {
+                resolve(Swal.fire(Object.assign({}, this.defaults(), options)));
+            });
+        });
+    },
     success(message) {
-        return Swal.fire(Object.assign({}, this.defaults(), {
+        return this.show({
             icon: 'success',
             title: 'สำเร็จ',
             text: message,
-        }));
+        });
     },
     error(message) {
-        return Swal.fire(Object.assign({}, this.defaults(), {
+        return this.show({
             icon: 'error',
             title: 'เกิดข้อผิดพลาด',
             text: message,
             confirmButtonColor: themeColor('error'),
-        }));
+        });
     },
     warning(message) {
-        return Swal.fire(Object.assign({}, this.defaults(), {
+        return this.show({
             icon: 'warning',
             title: 'แจ้งเตือน',
             text: message,
-        }));
+        });
     },
     confirm(message, options = {}) {
-        return Swal.fire(Object.assign({}, this.defaults(), {
+        return this.show({
             icon: 'warning',
             title: options.title || 'ยืนยัน',
             text: message,
@@ -58,7 +67,7 @@ window.AppAlert = {
             cancelButtonText: options.cancelText || 'ยกเลิก',
             confirmButtonColor: options.confirmColor || themeColor('error'),
             reverseButtons: true,
-        })).then((result) => result.isConfirmed);
+        }).then((result) => result.isConfirmed);
     },
 };
 

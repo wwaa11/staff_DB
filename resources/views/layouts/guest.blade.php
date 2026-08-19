@@ -18,6 +18,7 @@
     <div class="flex min-h-screen items-center justify-center px-4 py-10">
         <div class="w-full max-w-sm">
             <div class="mb-6 text-center">
+                <img src="{{ asset('logo/Logo.png') }}" alt="PR9 Staff" class="h-24 w-24 mx-auto">
                 <div class="text-lg font-semibold text-base-content">PR9 Staff</div>
                 <div class="mt-0.5 text-sm text-base-content/60">ระบบข้อมูลพนักงาน</div>
             </div>
