@@ -305,6 +305,54 @@ class StaffService
             ->get();
     }
 
+    public function listUsers(array $filters = [])
+    {
+        $query = User::leftJoin('departments', 'users.department', '=', 'departments.id')
+            ->leftJoin('emails', 'users.userid', '=', 'emails.userid')
+            ->select(
+                'users.id',
+                'users.userid',
+                'users.name',
+                'users.name_EN',
+                'users.position',
+                'users.position_EN',
+                'users.department as department_id',
+                'users.skip_hris',
+                'users.updated_at',
+                'departments.department',
+                'departments.division',
+                'emails.email'
+            );
+
+        if (! empty($filters['department_id'])) {
+            $query->where('users.department', (int) $filters['department_id']);
+        } elseif (array_key_exists('division', $filters) && $filters['division'] !== null && $filters['division'] !== '') {
+            $query->where('departments.division', $filters['division']);
+        } elseif (array_key_exists('division', $filters) && $filters['division'] === '') {
+            $query->where(function ($builder) {
+                $builder->whereNull('departments.division')
+                    ->orWhere('departments.division', '');
+            });
+        }
+
+        $q = trim((string) ($filters['q'] ?? ''));
+        if ($q !== '') {
+            $query->where(function ($builder) use ($q) {
+                $builder->where('users.userid', 'like', '%'.$q.'%')
+                    ->orWhere('users.name', 'like', '%'.$q.'%')
+                    ->orWhere('users.name_EN', 'like', '%'.$q.'%')
+                    ->orWhere('users.position', 'like', '%'.$q.'%')
+                    ->orWhere('emails.email', 'like', '%'.$q.'%');
+            });
+        }
+
+        return $query->orderBy('departments.division')
+            ->orderBy('departments.department')
+            ->orderBy('users.name')
+            ->paginate((int) ($filters['per_page'] ?? 50))
+            ->withQueryString();
+    }
+
     public function removeManualUser(string $userid): void
     {
         $this->deleteStaffByUserid($userid);

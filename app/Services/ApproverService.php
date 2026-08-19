@@ -19,7 +19,7 @@ class ApproverService
 
         $userApprover = UserApprover::where('userid', $user->userid)->first();
         if ($userApprover !== null) {
-            $customApprover = $this->payloadFromUserid($userApprover->approver_userid);
+            $customApprover = $this->payloadFromUserid($userApprover->approver_userid, 1);
             if ($customApprover !== null) {
                 return $this->keyedApprovers([$customApprover]);
             }
@@ -158,7 +158,7 @@ class ApproverService
 
         $payloads = [];
         foreach ($approvers as $approver) {
-            $payload = $this->payloadFromUserid((string) $approver->userid);
+            $payload = $this->payloadFromUserid((string) $approver->userid, (int) $approver->level);
             if ($payload !== null) {
                 $payloads[] = $payload;
             }
@@ -178,7 +178,7 @@ class ApproverService
         return $response;
     }
 
-    private function payloadFromUserid(string $approverUserid): ?array
+    private function payloadFromUserid(string $approverUserid, ?int $level = null): ?array
     {
         $approverUser = User::where('userid', $approverUserid)->first();
         if ($approverUser == null) {
@@ -194,6 +194,7 @@ class ApproverService
             'position' => $approverUser->position,
             'position_EN' => $approverUser->position_EN,
             'email' => $email !== null ? $email->email : null,
+            'level' => $level,
         ]);
     }
 
@@ -206,6 +207,7 @@ class ApproverService
             'position' => $data['position'] ?? null,
             'position_EN' => $data['position_EN'] ?? null,
             'email' => $data['email'] ?? null,
+            'level' => $data['level'] ?? null,
         ];
     }
 }

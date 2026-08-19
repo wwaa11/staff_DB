@@ -5,41 +5,23 @@
 @section('subtitle', 'ถ้าพนักงานมีผู้อนุมัติที่ตั้งไว้ที่นี่ API getApprover จะส่งผู้อนุมัติคนนี้แทนผู้อนุมัติตามแผนก')
 
 @section('content')
-    <form method="POST" action="{{ url('/user-approver') }}" class="card" id="approver-form">
-        @csrf
-        <div class="grid gap-4 md:grid-cols-2">
-            <div>
-                <label class="label" for="user-search">พนักงาน</label>
-                <div class="relative">
-                    <input type="text" class="input" id="user-search" autocomplete="off"
-                        placeholder="ค้นหารหัสหรือชื่อพนักงาน" aria-describedby="user-preview">
-                    <input type="hidden" name="userid" id="userid" value="{{ old('userid') }}">
-                    <div class="suggest-list" id="user-suggest" role="listbox"></div>
-                </div>
-                <div class="preview" id="user-preview">ยังไม่ได้เลือกพนักงาน</div>
+    <div class="panel">
+        <div class="panel-toolbar">
+            <div class="flex items-center gap-2">
+                <h2 class="panel-title">รายการที่กำหนดแล้ว</h2>
+                <span class="badge badge-primary">{{ $mappings->count() }}</span>
             </div>
-            <div>
-                <label class="label" for="approver-search">ผู้อนุมัติ</label>
-                <div class="relative">
-                    <input type="text" class="input" id="approver-search" autocomplete="off"
-                        placeholder="ค้นหารหัสหรือชื่อผู้อนุมัติ" aria-describedby="approver-preview">
-                    <input type="hidden" name="approver_userid" id="approver_userid"
-                        value="{{ old('approver_userid') }}">
-                    <div class="suggest-list" id="approver-suggest" role="listbox"></div>
-                </div>
-                <div class="preview" id="approver-preview">ยังไม่ได้เลือกผู้อนุมัติ</div>
+            <div class="flex flex-wrap items-center gap-2">
+                @include('partials.search_input', [
+                    'id' => 'table-filter',
+                    'placeholder' => 'ค้นหาในตาราง',
+                    'wrapperClass' => 'w-full max-w-xs',
+                    'attrs' => 'aria-label="ค้นหาในตาราง"',
+                ])
+                <button type="button" class="btn btn-primary" id="open-add-modal">
+                    เพิ่มผู้อนุมัติ
+                </button>
             </div>
-        </div>
-        <div class="mt-4">
-            <button type="submit" class="btn-primary" id="save-btn">บันทึก</button>
-        </div>
-    </form>
-
-    <div class="card">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-semibold text-slate-900">รายการที่กำหนดแล้ว ({{ $mappings->count() }})</h2>
-            <input type="search" class="input max-w-xs" id="table-filter" placeholder="ค้นหาในตาราง"
-                aria-label="ค้นหาในตาราง">
         </div>
         <div class="overflow-x-auto">
             <table class="data-table" id="mapping-table">
@@ -57,23 +39,36 @@
                     @forelse ($mappings as $row)
                         <tr>
                             <td>
-                                <strong>{{ $row->user_name ?: '-' }}</strong><br>
-                                <small class="text-slate-500">{{ $row->userid }} · {{ $row->user_position ?: '-' }}</small>
+                                <div class="font-semibold text-base-content">{{ $row->user_name ?: '-' }}</div>
+                                <div class="mt-0.5 text-xs text-base-content/50">{{ $row->userid }} ·
+                                    {{ $row->user_position ?: '-' }}</div>
                             </td>
                             <td>{{ $row->user_department ?: '-' }}</td>
                             <td>
-                                <strong>{{ $row->approver_name ?: '-' }}</strong><br>
-                                <small class="text-slate-500">{{ $row->approver_userid }} ·
-                                    {{ $row->approver_position ?: '-' }}</small>
+                                <div class="font-semibold text-base-content">{{ $row->approver_name ?: '-' }}</div>
+                                <div class="mt-0.5 text-xs text-base-content/50">{{ $row->approver_userid }} ·
+                                    {{ $row->approver_position ?: '-' }}</div>
                             </td>
                             <td>{{ $row->approver_department ?: '-' }}</td>
-                            <td>{{ $row->updated_at }}</td>
+                            <td class="whitespace-nowrap text-base-content/50">{{ $row->updated_at }}</td>
                             <td>
-                                <form method="POST" action="{{ url('/user-approver/'.$row->id.'/delete') }}"
-                                    onsubmit="return confirm('ลบการกำหนดผู้อนุมัติของ {{ $row->user_name }} ?');">
-                                    @csrf
-                                    <button type="submit" class="btn-danger">ลบ</button>
-                                </form>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" class="btn btn-outline btn-sm edit-btn"
+                                        data-userid="{{ $row->userid }}" data-user-name="{{ $row->user_name }}"
+                                        data-user-position="{{ $row->user_position }}"
+                                        data-user-department="{{ $row->user_department }}"
+                                        data-approver-userid="{{ $row->approver_userid }}"
+                                        data-approver-name="{{ $row->approver_name }}"
+                                        data-approver-position="{{ $row->approver_position }}"
+                                        data-approver-department="{{ $row->approver_department }}">
+                                        แก้ไข
+                                    </button>
+                                    <form method="POST" action="{{ url('/user-approver/'.$row->id.'/delete') }}"
+                                        data-confirm="ลบการกำหนดผู้อนุมัติของ {{ $row->user_name }} ?">
+                                        @csrf
+                                        <button type="submit" class="btn btn-error btn-outline btn-sm">ลบ</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -85,11 +80,64 @@
             </table>
         </div>
     </div>
+
+    <dialog id="approver-modal" class="modal">
+        <div class="modal-box max-w-3xl">
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="ปิด">✕</button>
+            </form>
+            <h3 class="text-lg font-bold" id="modal-title">เพิ่มผู้อนุมัติเฉพาะบุคคล</h3>
+            <p class="mt-1 text-sm text-base-content/50">ค้นหาแล้วเลือกจากรายการเท่านั้น</p>
+
+            <form method="POST" action="{{ url('/user-approver') }}" id="approver-form" class="mt-5">
+                @csrf
+                <div class="grid gap-5 md:grid-cols-2">
+                    <div>
+                        <label class="field-label" for="user-search">พนักงาน</label>
+                        <div class="relative z-30">
+                            @include('partials.search_input', [
+                                'id' => 'user-search',
+                                'placeholder' => 'ค้นหารหัสหรือชื่อพนักงาน',
+                                'attrs' => 'aria-describedby="user-preview"',
+                            ])
+                            <input type="hidden" name="userid" id="userid" value="{{ old('userid') }}">
+                            <div class="suggest-list" id="user-suggest" role="listbox"></div>
+                        </div>
+                        <div class="preview" id="user-preview">ยังไม่ได้เลือกพนักงาน</div>
+                    </div>
+                    <div>
+                        <label class="field-label" for="approver-search">ผู้อนุมัติ</label>
+                        <div class="relative z-30">
+                            @include('partials.search_input', [
+                                'id' => 'approver-search',
+                                'placeholder' => 'ค้นหารหัสหรือชื่อผู้อนุมัติ',
+                                'attrs' => 'aria-describedby="approver-preview"',
+                            ])
+                            <input type="hidden" name="approver_userid" id="approver_userid"
+                                value="{{ old('approver_userid') }}">
+                            <div class="suggest-list" id="approver-suggest" role="listbox"></div>
+                        </div>
+                        <div class="preview" id="approver-preview">ยังไม่ได้เลือกผู้อนุมัติ</div>
+                    </div>
+                </div>
+                <div class="modal-action">
+                    <button type="button" class="btn btn-outline" id="close-modal-btn">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary" id="save-btn">บันทึก</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 @endsection
 
 @push('scripts')
     <script>
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
+        const modal = document.getElementById('approver-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const shouldOpenModal = @json($errors->any() || old('userid') || old('approver_userid'));
 
         function debounce(fn, wait) {
             let t;
@@ -110,6 +158,27 @@
                 (item.department ? ' · ' + item.department : '') + '</small>';
         }
 
+        function resetForm() {
+            document.getElementById('userid').value = '';
+            document.getElementById('approver_userid').value = '';
+            document.getElementById('user-search').value = '';
+            document.getElementById('approver-search').value = '';
+            document.getElementById('user-preview').textContent = 'ยังไม่ได้เลือกพนักงาน';
+            document.getElementById('approver-preview').textContent = 'ยังไม่ได้เลือกผู้อนุมัติ';
+            document.getElementById('save-btn').disabled = false;
+            document.getElementById('save-btn').textContent = 'บันทึก';
+            modalTitle.textContent = 'เพิ่มผู้อนุมัติเฉพาะบุคคล';
+            if (window.AppSearch) {
+                AppSearch.syncClearButton(document.getElementById('user-search'));
+                AppSearch.syncClearButton(document.getElementById('approver-search'));
+            }
+        }
+
+        function openAddModal() {
+            resetForm();
+            AppModal.open(modal);
+        }
+
         function bindSearch(searchId, hiddenId, suggestId, previewId, emptyText) {
             const search = document.getElementById(searchId);
             const hidden = document.getElementById(hiddenId);
@@ -125,6 +194,9 @@
             function selectItem(item) {
                 hidden.value = item.userid;
                 search.value = item.userid + ' - ' + item.name;
+                if (window.AppSearch) {
+                    AppSearch.syncClearButton(search);
+                }
                 preview.innerHTML = personHtml(item);
                 hide();
             }
@@ -173,14 +245,44 @@
             });
 
             document.addEventListener('click', function(e) {
-                if (!search.contains(e.target) && !suggest.contains(e.target)) {
+                if (!search.contains(e.target) && !suggest.contains(e.target) && !e.target.closest('.search-clear')) {
                     hide();
                 }
             });
+
+            return {
+                selectItem: selectItem
+            };
         }
 
-        bindSearch('user-search', 'userid', 'user-suggest', 'user-preview', 'ยังไม่ได้เลือกพนักงาน');
-        bindSearch('approver-search', 'approver_userid', 'approver-suggest', 'approver-preview', 'ยังไม่ได้เลือกผู้อนุมัติ');
+        const userSearch = bindSearch('user-search', 'userid', 'user-suggest', 'user-preview', 'ยังไม่ได้เลือกพนักงาน');
+        const approverSearch = bindSearch('approver-search', 'approver_userid', 'approver-suggest', 'approver-preview',
+            'ยังไม่ได้เลือกผู้อนุมัติ');
+
+        document.getElementById('open-add-modal').addEventListener('click', openAddModal);
+        document.getElementById('close-modal-btn').addEventListener('click', function() {
+            AppModal.close(modal);
+        });
+
+        document.querySelectorAll('.edit-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                resetForm();
+                modalTitle.textContent = 'แก้ไขผู้อนุมัติเฉพาะบุคคล';
+                userSearch.selectItem({
+                    userid: btn.dataset.userid,
+                    name: btn.dataset.userName,
+                    position: btn.dataset.userPosition,
+                    department: btn.dataset.userDepartment
+                });
+                approverSearch.selectItem({
+                    userid: btn.dataset.approverUserid,
+                    name: btn.dataset.approverName,
+                    position: btn.dataset.approverPosition,
+                    department: btn.dataset.approverDepartment
+                });
+                AppModal.open(modal);
+            });
+        });
 
         document.getElementById('approver-form').addEventListener('submit', function(e) {
             const userid = document.getElementById('userid').value;
@@ -188,7 +290,7 @@
             const btn = document.getElementById('save-btn');
             if (!userid || !approver) {
                 e.preventDefault();
-                alert('กรุณาเลือกพนักงานและผู้อนุมัติจากรายการค้นหา');
+                AppAlert.warning('กรุณาเลือกพนักงานและผู้อนุมัติจากรายการค้นหา');
                 return;
             }
             btn.disabled = true;
@@ -201,5 +303,9 @@
                 row.style.display = row.textContent.toLowerCase().indexOf(q) === -1 ? 'none' : '';
             });
         });
+
+        if (shouldOpenModal) {
+            AppModal.open(modal);
+        }
     </script>
 @endpush

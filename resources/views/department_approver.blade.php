@@ -5,52 +5,37 @@
 @section('subtitle', 'เลือกฝ่ายแล้วเลือกแผนก เพื่อดูและแก้ไขผู้อนุมัติทุกระดับ')
 
 @section('content')
-    <form method="GET" action="{{ url('/department-approver') }}" class="card">
-        @include('partials.department_division_select', [
-            'groupedDepartments' => $groupedDepartments,
-            'selectedId' => $departmentId,
-            'autoSubmit' => true,
-        ])
-        <div class="mt-4">
-            <button type="submit" class="btn-primary">แสดง</button>
+    <form method="GET" action="{{ url('/department-approver') }}" class="panel">
+        <div class="panel-toolbar">
+            <div>
+                <h2 class="panel-title">เลือกแผนก</h2>
+                <p class="mt-0.5 text-sm text-base-content/50">ค้นหาฝ่ายก่อน แล้วเลือกแผนก</p>
+            </div>
+        </div>
+        <div class="panel-body">
+            @include('partials.department_division_select', [
+                'groupedDepartments' => $groupedDepartments,
+                'selectedId' => $departmentId,
+                'autoSubmit' => true,
+            ])
+            <div class="mt-5">
+                <button type="submit" class="btn btn-primary">แสดง</button>
+            </div>
         </div>
     </form>
 
     @if ($selected)
-        <form method="POST" action="{{ url('/department-approver') }}" class="card" id="approver-form">
-            @csrf
-            <input type="hidden" name="department_id" value="{{ $selected->id }}">
-            <input type="hidden" name="id" id="approver-id" value="">
-            <h2 class="mb-4 text-base font-semibold text-slate-900" id="form-title">เพิ่มผู้อนุมัติ ·
-                {{ $selected->department }}@if ($selected->division)
-                    · {{ $selected->division }}
-                @endif
-            </h2>
-            <div class="grid gap-4 md:grid-cols-12">
-                <div class="md:col-span-3">
-                    <label class="label" for="level">ระดับ</label>
-                    <input type="number" class="input" id="level" name="level" min="1"
-                        value="{{ old('level', $nextLevel) }}" required>
+        <div class="panel">
+            <div class="panel-toolbar">
+                <div class="flex items-center gap-2">
+                    <h2 class="panel-title">รายการผู้อนุมัติ · {{ $selected->department }}@if ($selected->division)
+                            · {{ $selected->division }}
+                        @endif
+                    </h2>
+                    <span class="badge badge-primary">{{ $approvers->count() }}</span>
                 </div>
-                <div class="md:col-span-9">
-                    <label class="label" for="approver-search">ผู้อนุมัติ</label>
-                    <div class="relative">
-                        <input type="text" class="input" id="approver-search" autocomplete="off"
-                            placeholder="ค้นหารหัสหรือชื่อผู้อนุมัติ">
-                        <input type="hidden" name="userid" id="userid" value="{{ old('userid') }}">
-                        <div class="suggest-list" id="approver-suggest" role="listbox"></div>
-                    </div>
-                    <div class="preview" id="approver-preview">ยังไม่ได้เลือกผู้อนุมัติ</div>
-                </div>
+                <button type="button" class="btn btn-primary" id="open-add-modal">เพิ่มผู้อนุมัติ</button>
             </div>
-            <div class="mt-4 flex flex-wrap gap-2">
-                <button type="submit" class="btn-primary" id="save-btn">บันทึก</button>
-                <button type="button" class="btn-secondary" id="reset-btn">ยกเลิกการแก้ไข</button>
-            </div>
-        </form>
-
-        <div class="card">
-            <h2 class="mb-4 text-base font-semibold text-slate-900">รายการผู้อนุมัติ ({{ $approvers->count() }})</h2>
             <div class="overflow-x-auto">
                 <table class="data-table">
                     <thead>
@@ -70,33 +55,35 @@
                                 $rowEmail = optional($row->email)->email;
                             @endphp
                             <tr>
-                                <td>{{ $row->level ?: '-' }}</td>
                                 <td>
-                                    <strong>{{ $rowName ?: '-' }}</strong><br>
-                                    <small class="text-slate-500">{{ $row->userid }}@if ($rowPosition)
+                                    <span class="badge badge-primary">ระดับ {{ $row->level ?: '-' }}</span>
+                                </td>
+                                <td>
+                                    <div class="font-semibold text-base-content">{{ $rowName ?: '-' }}</div>
+                                    <div class="mt-0.5 text-xs text-base-content/50">{{ $row->userid }}@if ($rowPosition)
                                             · {{ $rowPosition }}
                                         @endif
-                                    </small>
+                                    </div>
                                 </td>
                                 <td>{{ $rowEmail ?: '-' }}</td>
                                 <td>
-                                    {{ $row->updated_username ?: '-' }}<br>
-                                    <small class="text-slate-500">{{ $row->updated_at }}</small>
+                                    <div>{{ $row->updated_username ?: '-' }}</div>
+                                    <div class="mt-0.5 text-xs text-base-content/50">{{ $row->updated_at }}</div>
                                 </td>
                                 <td>
                                     <div class="flex flex-wrap gap-2">
-                                        <button type="button" class="btn-secondary edit-btn" data-id="{{ $row->id }}"
-                                            data-level="{{ $row->level }}" data-userid="{{ $row->userid }}"
-                                            data-name="{{ $rowName }}" data-position="{{ $rowPosition }}"
-                                            data-email="{{ $rowEmail }}">
+                                        <button type="button" class="btn btn-outline btn-sm edit-btn"
+                                            data-id="{{ $row->id }}" data-level="{{ $row->level }}"
+                                            data-userid="{{ $row->userid }}" data-name="{{ $rowName }}"
+                                            data-position="{{ $rowPosition }}" data-email="{{ $rowEmail }}">
                                             แก้ไข
                                         </button>
                                         <form method="POST"
                                             action="{{ url('/department-approver/'.$row->id.'/delete') }}"
-                                            onsubmit="return confirm('ลบผู้อนุมัติระดับ {{ $row->level }} ?');">
+                                            data-confirm="ลบผู้อนุมัติระดับ {{ $row->level }} ?">
                                             @csrf
                                             <input type="hidden" name="department_id" value="{{ $selected->id }}">
-                                            <button type="submit" class="btn-danger">ลบ</button>
+                                            <button type="submit" class="btn btn-error btn-outline btn-sm">ลบ</button>
                                         </form>
                                     </div>
                                 </td>
@@ -110,15 +97,62 @@
                 </table>
             </div>
         </div>
+
+        <dialog id="approver-modal" class="modal">
+            <div class="modal-box max-w-2xl">
+                <form method="dialog">
+                    <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="ปิด">✕</button>
+                </form>
+                <h3 class="text-lg font-bold" id="modal-title">เพิ่มผู้อนุมัติ</h3>
+                <p class="mt-1 text-sm text-base-content/50">{{ $selected->department }}@if ($selected->division)
+                        · {{ $selected->division }}
+                    @endif
+                </p>
+
+                <form method="POST" action="{{ url('/department-approver') }}" id="approver-form" class="mt-5">
+                    @csrf
+                    <input type="hidden" name="department_id" value="{{ $selected->id }}">
+                    <input type="hidden" name="id" id="approver-id" value="">
+                    <div class="grid gap-5 md:grid-cols-12">
+                        <div class="md:col-span-3">
+                            <label class="field-label" for="level">ระดับ</label>
+                            <input type="number" class="input input-bordered w-full" id="level" name="level" min="1"
+                                value="{{ old('level', $nextLevel) }}" required>
+                        </div>
+                        <div class="md:col-span-9">
+                            <label class="field-label" for="approver-search">ผู้อนุมัติ</label>
+                            <div class="relative z-30">
+                                @include('partials.search_input', [
+                                    'id' => 'approver-search',
+                                    'placeholder' => 'ค้นหารหัสหรือชื่อผู้อนุมัติ',
+                                ])
+                                <input type="hidden" name="userid" id="userid" value="{{ old('userid') }}">
+                                <div class="suggest-list" id="approver-suggest" role="listbox"></div>
+                            </div>
+                            <div class="preview" id="approver-preview">ยังไม่ได้เลือกผู้อนุมัติ</div>
+                        </div>
+                    </div>
+                    <div class="modal-action">
+                        <button type="button" class="btn btn-outline" id="close-modal-btn">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary" id="save-btn">บันทึก</button>
+                    </div>
+                </form>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+            </form>
+        </dialog>
     @endif
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/department-select.js') }}"></script>
     @if ($selected)
         <script>
             const csrf = document.querySelector('meta[name="csrf-token"]').content;
             const nextLevel = {{ (int) $nextLevel }};
+            const modal = document.getElementById('approver-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const shouldOpenModal = @json($errors->any() || old('userid') || old('level'));
 
             function debounce(fn, wait) {
                 let t;
@@ -145,7 +179,6 @@
             const preview = document.getElementById('approver-preview');
             const idInput = document.getElementById('approver-id');
             const levelInput = document.getElementById('level');
-            const formTitle = document.getElementById('form-title');
             let lastItems = [];
 
             function hideSuggest() {
@@ -156,6 +189,9 @@
             function selectItem(item) {
                 hidden.value = item.userid;
                 search.value = item.userid + ' - ' + item.name;
+                if (window.AppSearch) {
+                    AppSearch.syncClearButton(search);
+                }
                 preview.innerHTML = personHtml(item);
                 hideSuggest();
             }
@@ -165,9 +201,18 @@
                 levelInput.value = nextLevel;
                 hidden.value = '';
                 search.value = '';
+                if (window.AppSearch) {
+                    AppSearch.syncClearButton(search);
+                }
                 preview.textContent = 'ยังไม่ได้เลือกผู้อนุมัติ';
-                formTitle.textContent = 'เพิ่มผู้อนุมัติ · {{ $selected->department }}@if ($selected->division) · {{ $selected->division }}@endif';
+                modalTitle.textContent = 'เพิ่มผู้อนุมัติ';
+                document.getElementById('save-btn').disabled = false;
                 document.getElementById('save-btn').textContent = 'บันทึก';
+            }
+
+            function openAddModal() {
+                resetForm();
+                AppModal.open(modal);
             }
 
             const runSearch = debounce(function() {
@@ -214,46 +259,48 @@
             });
 
             document.addEventListener('click', function(e) {
-                if (!search.contains(e.target) && !suggest.contains(e.target)) {
+                if (!search.contains(e.target) && !suggest.contains(e.target) && !e.target.closest('.search-clear')) {
                     hideSuggest();
                 }
             });
 
+            document.getElementById('open-add-modal').addEventListener('click', openAddModal);
+            document.getElementById('close-modal-btn').addEventListener('click', function() {
+                AppModal.close(modal);
+            });
+
             document.querySelectorAll('.edit-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
+                    resetForm();
                     idInput.value = btn.dataset.id;
                     levelInput.value = btn.dataset.level || 1;
-                    hidden.value = btn.dataset.userid;
-                    search.value = btn.dataset.userid + ' - ' + (btn.dataset.name || '');
-                    preview.innerHTML = personHtml({
+                    selectItem({
                         userid: btn.dataset.userid,
                         name: btn.dataset.name,
                         position: btn.dataset.position,
                         department: ''
                     });
-                    formTitle.textContent = 'แก้ไขผู้อนุมัติระดับ ' + btn.dataset.level +
-                        ' · {{ $selected->department }}@if ($selected->division) · {{ $selected->division }}@endif';
+                    modalTitle.textContent = 'แก้ไขผู้อนุมัติระดับ ' + btn.dataset.level;
                     document.getElementById('save-btn').textContent = 'อัปเดต';
-                    document.getElementById('approver-form').scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
+                    AppModal.open(modal);
                 });
             });
-
-            document.getElementById('reset-btn').addEventListener('click', resetForm);
 
             document.getElementById('approver-form').addEventListener('submit', function(e) {
                 const userid = hidden.value;
                 const btn = document.getElementById('save-btn');
                 if (!userid) {
                     e.preventDefault();
-                    alert('กรุณาเลือกผู้อนุมัติจากรายการค้นหา');
+                    AppAlert.warning('กรุณาเลือกผู้อนุมัติจากรายการค้นหา');
                     return;
                 }
                 btn.disabled = true;
                 btn.textContent = 'กำลังบันทึก...';
             });
+
+            if (shouldOpenModal) {
+                AppModal.open(modal);
+            }
         </script>
     @endif
 @endpush

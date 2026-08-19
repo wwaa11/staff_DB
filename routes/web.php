@@ -1,12 +1,12 @@
 <?php
 
 use App\Http\Controllers\Web\AuthController;
+use App\Http\Controllers\Web\DataCleanupController;
 use App\Http\Controllers\Web\DepartmentApproverController;
-use App\Http\Controllers\Web\DepartmentController;
 use App\Http\Controllers\Web\HrisController;
 use App\Http\Controllers\Web\ManualUserController;
 use App\Http\Controllers\Web\UserApproverController;
-use App\Http\Controllers\Web\UserEmailController;
+use App\Http\Controllers\Web\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -41,16 +41,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/hris-update', [HrisController::class, 'index']);
     Route::post('/hris-update', [HrisController::class, 'run']);
 
-    Route::get('/department-cleanup', [DepartmentController::class, 'cleanup']);
-    Route::post('/department-cleanup/delete-all', [DepartmentController::class, 'destroyAllUnused']);
-    Route::post('/department-cleanup/{id}/delete', [DepartmentController::class, 'destroyUnused']);
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users/email', [UserController::class, 'updateEmail']);
 
-    Route::get('/user-email', [UserEmailController::class, 'index']);
-    Route::get('/user-email/search', [UserEmailController::class, 'search']);
-    Route::post('/user-email', [UserEmailController::class, 'store']);
-    Route::post('/user-email/clear-orphans', [UserEmailController::class, 'destroyOrphans']);
-    Route::post('/user-email/orphan/{id}/delete', [UserEmailController::class, 'destroyOrphan']);
-    Route::post('/user-email/{id}/delete', [UserEmailController::class, 'destroy']);
+    Route::get('/data-cleanup', [DataCleanupController::class, 'index']);
+    Route::post('/data-cleanup/emails/delete-all', [DataCleanupController::class, 'destroyOrphans']);
+    Route::post('/data-cleanup/emails/{id}/delete', [DataCleanupController::class, 'destroyOrphan']);
+    Route::post('/data-cleanup/departments/delete-all', [DataCleanupController::class, 'destroyAllUnused']);
+    Route::post('/data-cleanup/departments/{id}/delete', [DataCleanupController::class, 'destroyUnused']);
 
     Route::get('/user-manual', [ManualUserController::class, 'index']);
     Route::get('/user-manual/search', [ManualUserController::class, 'search']);
