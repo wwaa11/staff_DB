@@ -1,9 +1,10 @@
 <?php
+
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class User extends Model
+class User extends Authenticatable
 {
     protected $fillable = [
         'userid',
@@ -15,6 +16,7 @@ class User extends Model
         'password',
         'picture',
         'line_ID',
+        'skip_hris',
     ];
 
     public function department()
@@ -35,10 +37,5 @@ class User extends Model
     public function referance()
     {
         return $this->hasMany(Referance::class, 'userid', 'userid');
-    }
-
-    public function sign()
-    {
-        return $this->hasMany(Sign::class, 'userid', 'userid');
     }
 }

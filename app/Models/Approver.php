@@ -8,6 +8,14 @@ class Approver extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'department_id',
+        'userid',
+        'level',
+        'updated_userid',
+        'updated_username',
+    ];
+
     public function userData()
     {
         return $this->belongsTo(User::class, 'userid', 'userid');

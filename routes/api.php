@@ -1,6 +1,9 @@
 <?php
 
-use App\Http\Controllers\DBController;
+use App\Http\Controllers\Api\ApproverController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DepartmentController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,17 +17,14 @@ use Illuminate\Support\Facades\Route;
 |
  */
 
-Route::post('/auth', [DBController::class, 'API_Auth']);
-Route::post('/getuser', [DBController::class, 'API_getUser']);
-Route::post('/auth/addwitness', [DBController::class, 'API_AddWitness']);
-Route::post('/getapprover', [DBController::class, 'API_getApprover']);
-Route::post('/getapproverdepartment', [DBController::class, 'API_getApprover_Department']);
+Route::middleware('api.token')->group(function () {
+    Route::post('/auth', [AuthController::class, 'auth']);
+    Route::post('/getuser', [UserController::class, 'show']);
+    Route::post('/getapprover', [ApproverController::class, 'show']);
+    Route::post('/getapproverdepartment', [ApproverController::class, 'showByDepartment']);
 
-// Department
-Route::post('/get/departments', [DBController::class, 'API_getDepartments']);
-Route::post('/get/departments/users', [DBController::class, 'API_getDepartmentsUsers']);
-Route::post('/get/departments/positions', [DBController::class, 'API_getDepartmentsPositions']);
-Route::post('/get/departments/users/position', [DBController::class, 'API_getDepartmentsUsersPosition']);
-
-// Consent
-Route::post('/patient/consent', [DBController::class, 'API_PatientConsent']);
+    Route::post('/get/departments', [DepartmentController::class, 'index']);
+    Route::post('/get/departments/users', [DepartmentController::class, 'users']);
+    Route::post('/get/departments/positions', [DepartmentController::class, 'positions']);
+    Route::post('/get/departments/users/position', [DepartmentController::class, 'usersByPosition']);
+});

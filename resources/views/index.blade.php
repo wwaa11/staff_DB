@@ -1,53 +1,35 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+@extends('layouts.guest')
 
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <script src="{{ asset('js/jquery.min.js') }}"></script>
-    <script src="{{ asset('js/bootstrap.min.js') }}"></script>
-    <script src="{{ asset('js/tableToExcel.js') }}"></script>
-    <link rel="stylesheet" href="{{ asset('css/bootstrap.min.css') }}">
-    <title>WEB</title>
-</head>
+@section('title', 'เข้าสู่ระบบ')
 
-<body>
-    <div class="container">
-        <button onclick="ex()">Export</button>
-        <table class="table table-bordered" id="tabel">
-            <tr>
-                <td>ลำดับ</td>
-                <td>Date</td>
-                <td>VN</td>
-                <td>HN</td>
-                <td>ชื่อ - นามสกุล</td>
-                <td>Clinic</td>
-                <td>แพทย์</td>
-            </tr>
-            @foreach ($output as $key => $icd)
-                <tr>
-                    <td colspan="7">{{ $key }}</td>
-                </tr>
-                @foreach ($icd as $i => $item)
-                    <tr>
-                        <td>{{ $i + 1 }}</td>
-                        <td>{{ $item->date }}</td>
-                        <td>{{ $item->VN }}</td>
-                        <td>{{ $item->HN }}</td>
-                        <td>{{ $item->name }}</td>
-                        <td>{{ $item->Clinic_Name }}</td>
-                        <td>{{ $item->Doctor_Name }}</td>
-                    </tr>
-                @endforeach
-            @endforeach
-        </table>
-    </div>
-</body>
-<script>
-    function ex() {
-        TableToExcel.convert(document.getElementById("tabel"));
-    }
-</script>
+@section('content')
+    <h1 class="text-xl font-bold text-slate-900">เข้าสู่ระบบ</h1>
+    <p class="mb-6 mt-1 text-sm text-slate-600">ใช้รหัสพนักงานและรหัสผ่าน Windows (LDAP)</p>
 
-</html>
+    @include('partials.alerts')
+
+    <form method="POST" action="{{ url('/login') }}" id="login-form">
+        @csrf
+        <div class="mb-4">
+            <label class="label" for="userid">รหัสพนักงาน</label>
+            <input type="text" class="input" id="userid" name="userid" value="{{ old('userid') }}"
+                autocomplete="username" required autofocus>
+        </div>
+        <div class="mb-6">
+            <label class="label" for="password">รหัสผ่าน</label>
+            <input type="password" class="input" id="password" name="password" autocomplete="current-password"
+                required>
+        </div>
+        <button type="submit" class="btn-primary" id="login-btn">เข้าสู่ระบบ</button>
+    </form>
+@endsection
+
+@push('scripts')
+    <script>
+        document.getElementById('login-form').addEventListener('submit', function() {
+            var btn = document.getElementById('login-btn');
+            btn.disabled = true;
+            btn.textContent = 'กำลังเข้าสู่ระบบ...';
+        });
+    </script>
+@endpush
