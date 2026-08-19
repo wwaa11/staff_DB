@@ -42,11 +42,12 @@ class HrisController extends Controller
             'total' => $result['total'],
             'updated' => $result['updated'],
             'deleted' => $result['deleted'],
+            'skipped' => $result['skipped'],
         ]);
 
         return redirect('/hris-update')->with(
             'success',
-            'อัปเดตเสร็จแล้ว: ทั้งหมด '.$result['total'].' อัปเดต '.$result['updated'].' ลบ '.$result['deleted']
+            'อัปเดตเสร็จแล้ว: ทั้งหมด '.$result['total'].' อัปเดต '.$result['updated'].' ข้าม '.$result['skipped'].' ลบ '.$result['deleted']
         );
     }
 }

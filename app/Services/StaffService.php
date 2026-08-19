@@ -11,10 +11,7 @@ use LdapRecord\Connection;
 
 class StaffService
 {
-    private array $skipUserids = [
-        '226802',
-        '226805',
-    ];
+    private const HRIS_REFRESH_DAYS = 7;
 
     public function authLdap(string $userid, string $password): bool
     {
@@ -56,7 +53,7 @@ class StaffService
     public function getQueryData($userid)
     {
         $user = $this->loadStaffProfile($userid);
-        if ($user === null || in_array($user->userid, $this->skipUserids, true)) {
+        if ($user === null) {
             return $user;
         }
 
@@ -67,7 +64,7 @@ class StaffService
             $user->passport = $ref['passport'];
         }
 
-        if (! empty($user->skip_hris) || $this->daysSince($user->updated_at) <= 3) {
+        if (! $this->shouldRefreshFromHris($user)) {
             return $user;
         }
 
@@ -104,11 +101,13 @@ class StaffService
             $users = User::all();
             $updated = 0;
             $deleted = 0;
+            $skipped = 0;
             $count = 0;
 
             foreach ($users as $user) {
-                if (! empty($user->skip_hris)) {
+                if (! $this->shouldRefreshFromHris($user)) {
                     $count++;
+                    $skipped++;
                     continue;
                 }
 
@@ -131,6 +130,7 @@ class StaffService
                 'total' => $users->count(),
                 'updated' => $updated,
                 'deleted' => $deleted,
+                'skipped' => $skipped,
             ];
         } finally {
             $lock = $this->hrisUpdateLockPath();
@@ -508,6 +508,9 @@ class StaffService
     private function syncEmployee($user)
     {
         $employee = $this->fetchHrisEmployee($user->userid);
+        if ($employee === false) {
+            return $user;
+        }
         if ($employee === null) {
             return false;
         }
@@ -522,8 +525,13 @@ class StaffService
         return $user;
     }
 
-    private function fetchHrisEmployee(string $userid)
+    private function fetchHrisEmployee(string $userid): object|false|null
     {
+        $user = User::where('userid', $userid)->first();
+        if ($user !== null && ! $this->shouldRefreshFromHris($user)) {
+            return false;
+        }
+
         $curl = curl_init();
         curl_setopt_array($curl, [
             CURLOPT_URL => 'https://hris.praram9.com:8443/api/CustomEmployeeInfo',
@@ -634,6 +642,19 @@ class StaffService
         User::where('userid', $userid)->delete();
         Referance::where('userid', $userid)->delete();
         Email::where('userid', $userid)->delete();
+    }
+
+    private function shouldRefreshFromHris($user): bool
+    {
+        if (! empty($user->skip_hris)) {
+            return false;
+        }
+
+        if (empty($user->updated_at)) {
+            return true;
+        }
+
+        return $this->daysSince($user->updated_at) > self::HRIS_REFRESH_DAYS;
     }
 
     private function daysSince($datetime): int

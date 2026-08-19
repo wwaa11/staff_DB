@@ -35,6 +35,7 @@
             @if ($last)
                 <div class="mb-5 rounded-xl border border-base-300 bg-base-200 px-4 py-3 text-sm text-base-content/80">
                     ครั้งล่าสุดอัปเดต <strong>{{ $last['updated'] ?? 0 }}</strong> รายการ
+                    ข้าม <strong>{{ $last['skipped'] ?? 0 }}</strong> รายการ
                     ลบ <strong>{{ $last['deleted'] ?? 0 }}</strong> รายการ
                     จากทั้งหมด <strong>{{ $last['total'] ?? 0 }}</strong>
                     @if (! empty($last['ran_by_name']))
@@ -44,7 +45,7 @@
             @endif
 
             <p class="mb-5 text-sm leading-relaxed text-base-content/60">ระบบเรียก HRIS ทีละคน และพักทุก 15 รายการ
-                เพื่อลดภาระของเซิร์ฟเวอร์</p>
+                เพื่อลดภาระของเซิร์ฟเวอร์ หากพนักงานอัปเดตภายใน 7 วัน ระบบจะข้ามการดึงข้อมูลจาก HRIS</p>
 
             <form method="POST" action="{{ url('/hris-update') }}" id="hris-form"
                 data-confirm="เริ่มอัปเดตพนักงานทั้งหมดจาก HRIS? งานนี้อาจใช้เวลานาน">
